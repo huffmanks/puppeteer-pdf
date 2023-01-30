@@ -1,31 +1,50 @@
 const fs = require('fs')
 const puppeteer = require('puppeteer')
 
-const BASE_URL = 'https://www.wofford.edu/about/news/news-archives/2023/'
+// const year = '2023'
 
-async function scrape() {
+const BASE_URL = 'https://www.wofford.edu/about/news/news-archives/'
+
+const years = ['2022', '2023']
+
+years.map((year) => scrape(year))
+
+async function scrape(year) {
     const browser = await puppeteer.launch({ headless: true })
     const [page] = await browser.pages()
 
-    await page.goto(BASE_URL, { waitUntil: 'networkidle0' })
+    console.log('year')
 
-    const pageUrls = await page.evaluate((BASE_URL) => {
+    const SCRAPE_URL = `${BASE_URL}${year}/`
+
+    await page.goto(SCRAPE_URL, { waitUntil: 'networkidle0' })
+
+    const pageUrls = await page.evaluate((SCRAPE_URL) => {
         const urlArray = Array.from(document.links).map((link) => link.href)
-        const newsUrl = urlArray.filter((link) => link.startsWith(BASE_URL))
+        const newsUrl = urlArray.filter((link) => link.startsWith(SCRAPE_URL))
         const uniqueUrlArray = [...new Set(newsUrl)]
         return uniqueUrlArray
-    }, BASE_URL)
+    }, SCRAPE_URL)
 
-    const pdfs = await Promise.allSettled(
+    fs.mkdir(year, { recursive: true }, (err) => {
+        if (err) throw err
+    })
+
+    await Promise.allSettled(
         pageUrls.map(async (url, i) => {
             const page = await browser.newPage()
             await page.goto(url, {
-                waitUntil: 'domcontentloaded',
+                waitUntil: 'networkidle0',
             })
 
-            const fileName = url.substring(url.lastIndexOf('/') + 1)
+            console.log(i, year)
 
-            const pdf = await page.pdf({
+            const postDateEl = await page.waitForSelector('.post-date')
+            const postDate = await postDateEl.evaluate((el) => el.textContent)
+
+            const fileName = postDate + '-' + url.substring(url.lastIndexOf('/') + 1)
+
+            await page.pdf({
                 format: 'A4',
                 margin: {
                     top: 48,
@@ -33,20 +52,14 @@ async function scrape() {
                     left: 48,
                     right: 48,
                 },
+                path: `${year}/${fileName}.pdf`,
             })
 
             await page.close()
-
-            fs.writeFile(`assets/${fileName}.pdf`, pdf, (err) => {
-                if (err) throw err
-                console.log(`${fileName}.pdf saved`)
-            })
         })
     )
-
-    console.log(pdfs)
 
     await browser.close()
 }
 
-scrape()
+// scrape()
