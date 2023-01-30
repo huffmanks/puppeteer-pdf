@@ -1,19 +1,15 @@
 const fs = require('fs')
 const puppeteer = require('puppeteer')
 
-// const year = '2023'
-
 const BASE_URL = 'https://www.wofford.edu/about/news/news-archives/'
 
-const years = ['2022', '2023']
+const years = ['2019']
 
 years.map((year) => scrape(year))
 
 async function scrape(year) {
     const browser = await puppeteer.launch({ headless: true })
     const [page] = await browser.pages()
-
-    console.log('year')
 
     const SCRAPE_URL = `${BASE_URL}${year}/`
 
@@ -36,8 +32,6 @@ async function scrape(year) {
             await page.goto(url, {
                 waitUntil: 'networkidle0',
             })
-
-            console.log(i, year)
 
             const postDateEl = await page.waitForSelector('.post-date')
             const postDate = await postDateEl.evaluate((el) => el.textContent)
@@ -62,4 +56,31 @@ async function scrape(year) {
     await browser.close()
 }
 
-// scrape()
+// async function singleScrape() {
+//     const browser = await puppeteer.launch({ headless: true })
+//     const page = await browser.newPage()
+
+//     const year = '2019'
+//     const fileName = 'gonzaleslecture'
+
+//     await page.goto(`https://www.wofford.edu/about/news/news-archives/${year}/${fileName}`, { waitUntil: 'networkidle0' })
+
+//     const postDateEl = await page.waitForSelector('.post-date')
+//     const postDate = await postDateEl.evaluate((el) => el.textContent)
+
+//     await page.pdf({
+//         format: 'A4',
+//         margin: {
+//             top: 48,
+//             bottom: 48,
+//             left: 48,
+//             right: 48,
+//         },
+//         path: `${year}/${postDate}-${fileName}.pdf`,
+//     })
+
+//     await page.close()
+
+//     await browser.close()
+// }
+// singleScrape()
